@@ -10,6 +10,7 @@ Every change is anchored to a piece of the original code. If CrossPoint changes 
 those places, the script stops with a clear message instead of building something broken.
 """
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -89,12 +90,16 @@ def main() -> None:
                        "    showBookmarkMessage = false;  // dog-ear: nothing to clear, no extra refresh\n",
                        "popup timeout")
 
-    # 7) The finger places, the Home key navigates.
+    # 7) Touch boards (X4 Pro): the finger places, the Home key navigates.
+    #    Button-only boards (X3/X4): the chosen key (Confirm long or Power short) folds the corner
+    #    on this page, moves an older dog-ear here, or removes it when pressed on its own page.
     #    Home key action 'Bookmark' / long-press menu 'Bookmark': no dog-ear yet -> set it here;
     #    a dog-ear on another page -> jump there; on the dog-ear page -> nothing.
     #    Long press on the corner (touch): fold the corner here; an older dog-ear moves here.
     def long_press(indent: str) -> str:
-        return (f"{indent}if (cachedBookmarks.empty()) {{  // dog-ear: set, or jump to the existing one\n"
+        return (f"{indent}if (!BoardConfig::hasTouch()) {{  // dog-ear, buttons only: fold here, move here, or remove here\n"
+                f"{indent}  addBookmark();\n"
+                f"{indent}}} else if (cachedBookmarks.empty()) {{  // dog-ear: set, or jump to the existing one\n"
                 f"{indent}  addBookmark();\n"
                 f"{indent}}} else if (!currentPageBookmarked) {{\n"
                 f"{indent}  applyProgressChange(DogEar::jumpTarget(cachedBookmarks.front(), epub->getSpineItemsCount()));\n"
@@ -139,12 +144,37 @@ def main() -> None:
         "    }\n"
         "  }\n") + src[end:]
 
-    # 9) Re-read the optional /dogear.json look settings whenever a book is opened.
-    src = replace_once(src, "  BookmarkFile::load(epub->getPath(), cachedBookmarks);\n",
-                       "  BookmarkFile::load(epub->getPath(), cachedBookmarks);\n  DogEar::reloadLook();\n",
-                       "reload look")
-
     target.write_text(src, encoding="utf-8")
+
+    # 9) Button-only boards (X3/X4): offer the dog-ear for the short Power click too, so the
+    #    user can pick Confirm long or Power short in the settings, whichever is free.
+    settings = root / "src" / "SettingsList.h"
+    settings_src = replace_once(
+        settings.read_text(encoding="utf-8"),
+        "  // Touch boards without a home key have no button for these shortcuts.\n",
+        "  if (!BoardConfig::hasTouch()) {  // dog-ear: button-only boards can put it on Power too\n"
+        "    options.push_back({StrId::STR_BOOKMARK_OPTION, CrossPointSettings::PWR_BOOKMARK});\n"
+        "  }\n"
+        "  // Touch boards without a home key have no button for these shortcuts.\n",
+        "power button option")
+    settings.write_text(settings_src, encoding="utf-8")
+
+    # 10) Call it what it is: 'Dog-ear' instead of 'Bookmark' in the settings and the reader menu.
+    names = {
+        "english.yaml": ("Dog-ear", "Toggle Dog-ear"),
+        "german.yaml": ("Eselsohr", "Eselsohr setzen/entfernen"),
+    }
+    translations = root / "lib" / "I18n" / "translations"
+    if not (translations / "english.yaml").is_file():
+        fail("'translations': english.yaml not found")
+    for yaml_file in sorted(translations.glob("*.yaml")):
+        option, toggle = names.get(yaml_file.name, names["english.yaml"])
+        text = yaml_file.read_text(encoding="utf-8")
+        new_text = re.sub(r'^STR_BOOKMARK_OPTION: .*$', f'STR_BOOKMARK_OPTION: "{option}"', text, flags=re.M)
+        new_text = re.sub(r'^STR_TOGGLE_BOOKMARK: .*$', f'STR_TOGGLE_BOOKMARK: "{toggle}"', new_text, flags=re.M)
+        if yaml_file.name == "english.yaml" and new_text == text:
+            fail("'translations': bookmark labels not found in english.yaml")
+        yaml_file.write_text(new_text, encoding="utf-8")
 
     # 10) On-device updates come from this repository's releases (they include the dog-ear).
     if len(sys.argv) == 3:

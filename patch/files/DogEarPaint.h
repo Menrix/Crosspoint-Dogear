@@ -6,48 +6,28 @@
 //   level 0 = black, 1 = dark gray, 2 = light gray, 3 = white (same scale as the renderer).
 //   force = the pixel belongs to the corner itself and must be written even when white
 //   (this wipes the text under it). Shadow pixels only add ink (force = false).
+//
+// Integer math only: the ESP32-C3 (X3/X4) has no floating-point unit.
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 
 namespace DogEar {
 
-// Look of the dog-ear. All values can be tuned on the device in /dogear.json (see README).
-struct Look {
-  int size = 22;            // fold width along the top edge, % of the screen's short side
-  int crease = 145;         // how far down the right edge the crease ends, % of the fold width (100 = 45 degrees)
-  int tipX = 120;           // folded tip position, % of the fold width (from the right edge)
-  int tipY = 93;            // folded tip position, % of the fold width (from the top edge)
-  int background = 1;       // uncovered corner: 0 = black, 1 = dark gray, 2 = light gray (one flat tone)
-  int flapShade = 25;       // gray on the flap towards the tip, 0 (none) .. 255
-  int edge = 0;             // flap outline: 0 = black, 1 = dark gray, 2 = light gray, 3 = none
-  int shadowWidth = 10;     // how far the tip's shadow falls downwards, % of the fold width (0 = none)
-  int shadowStrength = 100; // shadow darkness at its darkest, 0 .. 100 (100 = black)
-  int shadowSoft = 60;      // soft fade around the shadow, % of the shadow drop (0 = razor sharp)
-  int shadowShift = 80;     // sideways offset of the tip's shadow, % of the drop (+ = right, towards the crease)
-
-  bool operator==(const Look& o) const {
-    return size == o.size && crease == o.crease && tipX == o.tipX && tipY == o.tipY && background == o.background &&
-           flapShade == o.flapShade && edge == o.edge && shadowWidth == o.shadowWidth &&
-           shadowStrength == o.shadowStrength && shadowSoft == o.shadowSoft && shadowShift == o.shadowShift;
-  }
-  bool operator!=(const Look& o) const { return !(*this == o); }
-
-  void clampAll() {
-    size = std::clamp(size, 5, 45);
-    crease = std::clamp(crease, 50, 250);
-    tipX = std::clamp(tipX, 40, 250);
-    tipY = std::clamp(tipY, 20, 250);
-    background = std::clamp(background, 0, 2);
-    flapShade = std::clamp(flapShade, 0, 255);
-    edge = std::clamp(edge, 0, 3);
-    shadowWidth = std::clamp(shadowWidth, 0, 50);
-    shadowStrength = std::clamp(shadowStrength, 0, 100);
-    shadowShift = std::clamp(shadowShift, -200, 200);
-    shadowSoft = std::clamp(shadowSoft, 0, 200);
-  }
-};
+// The look is fixed on purpose. All lengths are % of the fold width unless noted.
+namespace look {
+constexpr int kSize = 22;            // fold width along the top edge, % of the screen's short side
+constexpr int kCrease = 145;         // crease meets the right edge this far down (100 = 45 degrees)
+constexpr int kTipX = 120;           // folded tip, distance from the right edge
+constexpr int kTipY = 93;            // folded tip, distance from the top edge
+constexpr int kBackground = 200;     // uncovered corner darkness 0..256 (flat, drawn as a fine pattern)
+constexpr int kFlapShade = 25;       // gray on the flap towards the tip, 0..255
+constexpr int kEdgeLevel = 0;        // flap outline: 0 = black
+constexpr int kShadowDrop = 14;      // how far the tip's shadow falls down
+constexpr int kShadowShift = 80;     // sideways offset of that shadow, % of the drop (+ = right)
+constexpr int kShadowSoft = 0;       // soft fade around the shadow, % of the drop (0 = solid black, crisp)
+constexpr int kShadowDarkness = 255; // shadow core darkness 0..255
+}  // namespace look
 
 namespace detail {
 
@@ -59,131 +39,124 @@ inline int bayer(const int x, const int y) {  // 0..63
   return m[y & 7][x & 7];
 }
 
-// Darkness 0..255 -> renderer level 0..3. With real gray tones the dither only blends
+// Darkness 0..256 -> renderer level 0..3. With real gray tones the dither only blends
 // neighbouring tones (smooth); without them it falls back to black/white dots.
 inline int toLevel(const int x, const int y, const int darkness, const bool grayTones) {
   const int threshold = bayer(x, y) * 4 + 2;  // 2..254
   if (!grayTones) return darkness > threshold ? 0 : 3;
-  const int scaled = darkness * 3;  // 0..765, one gray step per 255
+  const int scaled = darkness * 3;  // one gray step per 255
   int dark = scaled / 255;
   if ((scaled % 255) > threshold) ++dark;
   return 3 - std::min(dark, 3);
 }
 
-// Which side of the line a->b the point p is on (sign only matters).
+// Which side of the line a->b the point p is on; |value| / length = distance in pixels.
 inline long side(const long ax, const long ay, const long bx, const long by, const long px, const long py) {
   return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
 }
 
-// Distance (whole pixels) from p to segment a-b, and where along it the closest point is (0..1024).
-inline void segDistance(const int ax, const int ay, const int bx, const int by, const int px, const int py,
-                        int& dist, int& along1024) {
-  const long dx = bx - ax, dy = by - ay;
-  const long len2 = dx * dx + dy * dy;
-  long t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy) * 1024 / len2 : 0;
-  t = std::clamp(t, 0L, 1024L);
-  const long ex = px * 1024L - (ax * 1024L + dx * t);
-  const long ey = py * 1024L - (ay * 1024L + dy * t);
-  const long d2 = (ex / 64) * (ex / 64) + (ey / 64) * (ey / 64);  // in (1/16 px)^2
-  dist = static_cast<int>(std::sqrt(static_cast<float>(d2))) / 16;
-  along1024 = static_cast<int>(t);
+inline long isqrt(const long n) {  // once per edge, not per pixel
+  long r = 0;
+  while ((r + 1) * (r + 1) <= n) ++r;
+  return std::max(1L, r);
+}
+
+inline long length(const long ax, const long ay, const long bx, const long by) {
+  return isqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
 }
 
 }  // namespace detail
 
 // Corner geometry in local coordinates: u = pixels from the right edge, v = pixels from the top.
-//   A = crease meets the top edge, B = crease meets the right edge, T = the folded-over tip.
+//   A = crease meets the top edge, B = crease meets the right edge, T = the folded-over tip,
+//   S = where the tip's shadow lands (the shadow is triangle A, B, S).
 struct Shape {
-  int ax, ay, bx, by, tx, ty;
-  int sx, sy;  // where the tip's shadow lands (the shadow is triangle A, B, S)
-  int soft;    // width of the soft fade around the shadow, pixels
+  int ax, ay, bx, by, tx, ty, sx, sy;
+  int soft;           // width of the soft fade around the shadow, pixels
+  int width, height;  // area the dog-ear can touch, from the top-right corner
 };
 
-inline Shape shape(const Look& look, const int screenWidth, const int screenHeight) {
-  const int s = std::max(16, std::min(screenWidth, screenHeight) * look.size / 100);
-  const int tx = s * look.tipX / 100;
-  const int ty = s * look.tipY / 100;
-  const int drop = s * look.shadowWidth / 100;
-  return {s, 0, 0, s * look.crease / 100, tx, ty, tx - drop * look.shadowShift / 100, ty + drop,
-          drop * look.shadowSoft / 100};
-}
-
-// Size of the area the dog-ear can touch, measured from the top-right corner.
-inline void extent(const Look& look, const int screenWidth, const int screenHeight, int& width, int& height) {
-  const Shape sh = shape(look, screenWidth, screenHeight);
-  width = std::max({sh.ax, sh.tx, sh.sx}) + sh.soft + 3;
-  height = std::max({sh.by, sh.ty, sh.sy}) + sh.soft + 3;
+inline Shape shape(const int screenWidth, const int screenHeight) {
+  using namespace look;
+  const int s = std::max(16, std::min(screenWidth, screenHeight) * kSize / 100);
+  Shape sh{};
+  sh.ax = s;
+  sh.ay = 0;
+  sh.bx = 0;
+  sh.by = s * kCrease / 100;
+  sh.tx = s * kTipX / 100;
+  sh.ty = s * kTipY / 100;
+  const int drop = s * kShadowDrop / 100;
+  sh.sx = sh.tx - drop * kShadowShift / 100;
+  sh.sy = sh.ty + drop;
+  sh.soft = drop * kShadowSoft / 100;
+  sh.width = std::min(screenWidth, std::max({sh.ax, sh.tx, sh.sx}) + sh.soft + 3);
+  sh.height = std::min(screenHeight, std::max({sh.by, sh.ty, sh.sy}) + sh.soft + 3);
+  return sh;
 }
 
 // grayTones: true when the page gets a grayscale pass (real gray tones available).
 template <typename Px>
-void paint(const Look& look, const int screenWidth, const int screenHeight, const bool grayTones, Px&& px) {
-  const Shape sh = shape(look, screenWidth, screenHeight);
+void paint(const int screenWidth, const int screenHeight, const bool grayTones, Px&& px) {
+  using namespace look;
+  using detail::side;
+  const Shape sh = shape(screenWidth, screenHeight);
   const int right = screenWidth - 1;
-  const int extentU = std::max({sh.ax, sh.tx, sh.sx}) + sh.soft + 2;
-  const int extentV = std::max({sh.by, sh.ty, sh.sy}) + sh.soft + 2;
-  // Winding of the flap triangle, so the inside test works either way round.
-  const long flapSign = detail::side(sh.ax, sh.ay, sh.bx, sh.by, sh.tx, sh.ty) > 0 ? 1 : -1;
-  const long shadowSign = detail::side(sh.ax, sh.ay, sh.bx, sh.by, sh.sx, sh.sy) > 0 ? 1 : -1;
-  const int maxDark = 255 * look.shadowStrength / 100;
 
-  for (int v = 0; v <= extentV; ++v) {
-    for (int u = 0; u <= extentU; ++u) {
+  // Winding of the triangles, so the inside tests work either way round.
+  const long flapSign = side(sh.ax, sh.ay, sh.bx, sh.by, sh.tx, sh.ty) > 0 ? 1 : -1;
+  const long shadowSign = side(sh.ax, sh.ay, sh.bx, sh.by, sh.sx, sh.sy) > 0 ? 1 : -1;
+  const long lenAB = detail::length(sh.ax, sh.ay, sh.bx, sh.by);
+  const long lenBT = detail::length(sh.bx, sh.by, sh.tx, sh.ty);
+  const long lenTA = detail::length(sh.tx, sh.ty, sh.ax, sh.ay);
+  const long lenBS = detail::length(sh.bx, sh.by, sh.sx, sh.sy);
+  const long lenSA = detail::length(sh.sx, sh.sy, sh.ax, sh.ay);
+  const long cornerArea = static_cast<long>(sh.ax) * sh.by;
+  const int flapDepth = std::max(1, sh.tx);
+
+  for (int v = 0; v < sh.height; ++v) {
+    for (int u = 0; u < sh.width; ++u) {
       const int x = right - u;
       const int y = v;
-      if (x < 0 || y >= screenHeight) continue;
 
-      // 1) Uncovered corner: one flat tone, no gradient (u/ax + v/by < 1). Always a fine pattern of
-      //    pure black and white pixels: a large area of real e-ink gray lets the old page show through.
-      if (static_cast<long>(u) * sh.by + static_cast<long>(v) * sh.ax < static_cast<long>(sh.ax) * sh.by) {
-        static constexpr int kBackgroundDarkness[3] = {256, 200, 110};
-        px(x, y, detail::toLevel(x, y, kBackgroundDarkness[look.background], false), true);
+      // 1) Uncovered corner: one flat tone, always a fine pattern of pure black and white
+      //    pixels (a large area of real e-ink gray lets the old page show through).
+      if (static_cast<long>(u) * sh.by + static_cast<long>(v) * sh.ax < cornerArea) {
+        px(x, y, detail::toLevel(x, y, kBackground, false), true);
         continue;
       }
 
       // 2) The folded flap: triangle A, B, T.
-      const long s1 = detail::side(sh.ax, sh.ay, sh.bx, sh.by, u, v) * flapSign;
-      const long s2 = detail::side(sh.bx, sh.by, sh.tx, sh.ty, u, v) * flapSign;
-      const long s3 = detail::side(sh.tx, sh.ty, sh.ax, sh.ay, u, v) * flapSign;
+      const long s1 = side(sh.ax, sh.ay, sh.bx, sh.by, u, v) * flapSign;
+      const long s2 = side(sh.bx, sh.by, sh.tx, sh.ty, u, v) * flapSign;
+      const long s3 = side(sh.tx, sh.ty, sh.ax, sh.ay, u, v) * flapSign;
       if (s1 >= 0 && s2 >= 0 && s3 >= 0) {
-        int dTop = 0, dBottom = 0, along = 0;
-        detail::segDistance(sh.ax, sh.ay, sh.tx, sh.ty, u, v, dTop, along);
-        detail::segDistance(sh.tx, sh.ty, sh.bx, sh.by, u, v, dBottom, along);
-        if ((dTop == 0 || dBottom == 0) && look.edge < 3) {
-          // Fine outline, so the white flap reads on a white page.
-          px(x, y, grayTones ? look.edge : (look.edge < 2 ? 0 : detail::toLevel(x, y, 85, false)), true);
+        if (s2 < lenBT || s3 < lenTA) {  // within one pixel of a free edge: fine outline
+          px(x, y, grayTones ? kEdgeLevel : 0, true);
           continue;
         }
         // Back of the page: white, with just a breath of gray towards the tip.
-        int dCrease = 0;
-        detail::segDistance(sh.ax, sh.ay, sh.bx, sh.by, u, v, dCrease, along);
-        const int darkness = std::min(look.flapShade, look.flapShade * dCrease / std::max(1, sh.tx));
+        const int dCrease = static_cast<int>(s1 / lenAB);
+        const int darkness = std::min(kFlapShade, kFlapShade * dCrease / flapDepth);
         px(x, y, detail::toLevel(x, y, darkness, grayTones), true);
         continue;
       }
 
-      // 3) Drop shadow of the lifted flap: triangle A, B, S (S = the tip moved down and sideways).
-      //    Solid inside, soft fade just outside its free edges. Only adds ink, the text stays.
-      if (s1 < 0) continue;  // the shadow never reaches the uncovered corner side of the crease
-      if (look.shadowShift >= 0 && s3 < 0) continue;  // shadow falls right: nothing left of the flap
-      const long q2 = detail::side(sh.bx, sh.by, sh.sx, sh.sy, u, v) * shadowSign;
-      const long q3 = detail::side(sh.sx, sh.sy, sh.ax, sh.ay, u, v) * shadowSign;
+      // 3) Drop shadow of the lifted flap: triangle A, B, S. Solid inside, soft fade just
+      //    outside its free edges. Only adds ink, the text underneath stays.
+      if (s3 < 0) continue;  // shadow falls to the right: nothing left of the flap
+      const long q2 = side(sh.bx, sh.by, sh.sx, sh.sy, u, v) * shadowSign;
+      const long q3 = side(sh.sx, sh.sy, sh.ax, sh.ay, u, v) * shadowSign;
       int darkness = 0;
       if (q2 >= 0 && q3 >= 0) {
-        darkness = maxDark;
+        darkness = kShadowDarkness;
       } else if (sh.soft > 0) {
-        int d = 1 << 20, along = 0, dEdge = 0;
-        if (q2 < 0) {
-          detail::segDistance(sh.bx, sh.by, sh.sx, sh.sy, u, v, dEdge, along);
-          d = std::min(d, dEdge);
-        }
-        if (q3 < 0) {
-          detail::segDistance(sh.sx, sh.sy, sh.ax, sh.ay, u, v, dEdge, along);
-          d = std::min(d, dEdge);
-        }
+        long d = 0;
+        if (q2 < 0) d = std::max(d, -q2 / lenBS);
+        if (q3 < 0) d = std::max(d, -q3 / lenSA);
         if (d < sh.soft) {
-          const int f = (sh.soft - d) * 256 / sh.soft;  // 256 at the shadow, 0 at the end of the fade
-          darkness = maxDark * f * f / (256 * 256);
+          const long f = (sh.soft - d) * 256 / sh.soft;  // 256 at the shadow, 0 at the end of the fade
+          darkness = static_cast<int>(kShadowDarkness * f * f / (256 * 256));
         }
       }
       if (darkness > 0) {
@@ -195,8 +168,8 @@ void paint(const Look& look, const int screenWidth, const int screenHeight, cons
 }
 
 // True when a touch at (x, y) lands on the dog-ear (a little larger than the drawing).
-inline bool hitsCorner(const Look& look, const int screenWidth, const int screenHeight, const int x, const int y) {
-  const Shape sh = shape(look, screenWidth, screenHeight);
+inline bool hitsCorner(const int screenWidth, const int screenHeight, const int x, const int y) {
+  const Shape sh = shape(screenWidth, screenHeight);
   const int zone = std::max(sh.tx, sh.by) * 5 / 4;
   return x >= screenWidth - zone && y < zone;
 }
