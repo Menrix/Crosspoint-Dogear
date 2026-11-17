@@ -144,6 +144,15 @@ def main() -> None:
         "    }\n"
         "  }\n") + src[end:]
 
+    # 8b) A page range ends exactly where the next chapter's first page begins, so a mark on a
+    #     chapter's first page also matched the previous chapter's last page (two dog-ears shown).
+    #     A mark always knows its chapter: never match it on a page of another chapter.
+    src = replace_once(src, "  const float bookmarkProgress = std::clamp(bookmark.percentage, 0.0f, 1.0f);\n",
+                       "  // dog-ear: a mark from another chapter never belongs to this page (chapter boundaries touch)\n"
+                       "  if (bookmark.computedChapterPageCount > 0 && bookmark.computedSpineIndex != spineIndex) return false;\n"
+                       "  const float bookmarkProgress = std::clamp(bookmark.percentage, 0.0f, 1.0f);\n",
+                       "chapter boundary")
+
     target.write_text(src, encoding="utf-8")
 
     # 9) Button-only boards (X3/X4): offer 'Go to Dog-ear' for the short Power click
