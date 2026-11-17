@@ -90,26 +90,26 @@ def main() -> None:
                        "    showBookmarkMessage = false;  // dog-ear: nothing to clear, no extra refresh\n",
                        "popup timeout")
 
-    # 7) Touch boards (X4 Pro): the finger places, the Home key navigates.
-    #    Button-only boards (X3/X4): the chosen key (Confirm long or Power short) folds the corner
-    #    on this page, moves an older dog-ear here, or removes it when pressed on its own page.
+    # 7) "Place" and "go to", the same on every device:
+    #    Place  = X4 Pro: long press on the corner. X3/X4: Confirm long ('Dog-ear', stock toggle:
+    #             folds here, moves an older dog-ear here, removes it on its own page).
+    #    Go to  = X4 Pro: Home key action. X3/X4: Power short ('Go to Dog-ear').
+    #             On another page -> jump there; on its page -> nothing.
+    #             No dog-ear yet -> X4 Pro: set it here. X3/X4: nothing (no popup, no extra e-ink refresh).
     #    Home key action 'Bookmark' / long-press menu 'Bookmark': no dog-ear yet -> set it here;
     #    a dog-ear on another page -> jump there; on the dog-ear page -> nothing.
     #    Long press on the corner (touch): fold the corner here; an older dog-ear moves here.
     def long_press(indent: str) -> str:
-        return (f"{indent}if (!BoardConfig::hasTouch()) {{  // dog-ear, buttons only: fold here, move here, or remove here\n"
-                f"{indent}  addBookmark();\n"
-                f"{indent}}} else if (cachedBookmarks.empty()) {{  // dog-ear: set, or jump to the existing one\n"
-                f"{indent}  addBookmark();\n"
+        return (f"{indent}if (cachedBookmarks.empty()) {{  // dog-ear: 'go to' with nothing to go to\n"
+                f"{indent}  if (!BoardConfig::hasTouch()) return;  // X3/X4: nothing happens, not even a redraw\n"
+                f"{indent}  addBookmark();  // X4 Pro: the Home key also sets the first dog-ear\n"
                 f"{indent}}} else if (!currentPageBookmarked) {{\n"
                 f"{indent}  applyProgressChange(DogEar::jumpTarget(cachedBookmarks.front(), epub->getSpineItemsCount()));\n"
                 f"{indent}}} else {{\n"
-                f"{indent}  haptic_feedback::touchAction(true);  // already on the dog-ear page\n"
+                f"{indent}  haptic_feedback::touchAction(true);  // already on the dog-ear page: no redraw\n"
+                f"{indent}  return;\n"
                 f"{indent}}}\n")
 
-    src = replace_once(src, "      case CrossPointSettings::LP_MENU_BOOKMARK:\n        addBookmark();\n",
-                       "      case CrossPointSettings::LP_MENU_BOOKMARK:\n" + long_press("        "),
-                       "long-press menu")
     src = replace_once(src,
                        "      case HomeButtonAction::Bookmark:\n        if (!showBookmarkMessage) {\n          addBookmark();\n",
                        "      case HomeButtonAction::Bookmark:\n        if (!showBookmarkMessage) {\n" + long_press("          "),
@@ -146,14 +146,14 @@ def main() -> None:
 
     target.write_text(src, encoding="utf-8")
 
-    # 9) Button-only boards (X3/X4): offer the dog-ear for the short Power click too, so the
-    #    user can pick Confirm long or Power short in the settings, whichever is free.
+    # 9) Button-only boards (X3/X4): offer 'Go to Dog-ear' for the short Power click
+    #    (the stock list has the bookmark shortcut only on touch boards without a home key).
     settings = root / "src" / "SettingsList.h"
     settings_src = replace_once(
         settings.read_text(encoding="utf-8"),
         "  // Touch boards without a home key have no button for these shortcuts.\n",
         "  if (!BoardConfig::hasTouch()) {  // dog-ear: button-only boards can put it on Power too\n"
-        "    options.push_back({StrId::STR_BOOKMARK_OPTION, CrossPointSettings::PWR_BOOKMARK});\n"
+        "    options.push_back({StrId::STR_GO_TO_DOGEAR, CrossPointSettings::PWR_BOOKMARK});\n"
         "  }\n"
         "  // Touch boards without a home key have no button for these shortcuts.\n",
         "power button option")
@@ -174,6 +174,14 @@ def main() -> None:
         new_text = re.sub(r'^STR_TOGGLE_BOOKMARK: .*$', f'STR_TOGGLE_BOOKMARK: "{toggle}"', new_text, flags=re.M)
         if yaml_file.name == "english.yaml" and new_text == text:
             fail("'translations': bookmark labels not found in english.yaml")
+        extra = {
+            "english.yaml": {"STR_GO_TO_DOGEAR": "Go to Dog-ear"},
+            "german.yaml": {"STR_GO_TO_DOGEAR": "Zum Eselsohr"},
+        }.get(yaml_file.name, {})  # other languages fall back to English
+        for key, value in extra.items():
+            if f"{key}:" not in new_text:
+                new_text = new_text.rstrip("\n") + f'\n{key}: "{value}"\n'
+
         yaml_file.write_text(new_text, encoding="utf-8")
 
     # 10) On-device updates come from this repository's releases (they include the dog-ear).

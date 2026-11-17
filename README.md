@@ -38,14 +38,14 @@ A long press never removes a dog-ear by accident. Removing is always a deliberat
 
 ### X3 and X4 (buttons only)
 
-Put **Dog-ear** on one key you don't use yet: **Confirm long press** or **Power short press**.
+Two keys, each with one job. Both react on the first press, without waiting.
 
-| Press the key… | Result |
+| Key (set in Settings → Controls) | Result |
 | --- | --- |
-| on a page without a dog-ear | Folds the corner here. An older dog-ear moves here. |
-| on the dog-ear page | Removes it |
+| **Confirm long press → Dog-ear** | Folds the corner on this page. An older dog-ear moves here. On the dog-ear page: removes it. |
+| **Power short press → Go to Dog-ear** | Jumps to the dog-ear. On the dog-ear page, or with no dog-ear yet, nothing happens. |
 
-CrossPoint remembers your reading position anyway, so there is no separate "jump" key on these devices.
+No pop-up messages: on e-ink every message costs extra screen refreshes, and the folded corner speaks for itself.
 
 On all devices, **Reader menu → Toggle Dog-ear** works too.
 
@@ -69,9 +69,9 @@ The dog-ear needs a key. None is assigned by default.
 1. **Settings → Controls → Home Button Gestures → Long Press → Dog-ear**
 2. **Settings → Controls → Touch Reader Controls → On** (for long press and tap on the corner)
 
-**X3 / X4**, pick one:
-- **Settings → Controls → Long-Press Menu → Dog-ear** (Confirm long press), or
-- **Settings → Controls → Short Power Button Click → Dog-ear** (Power short press)
+**X3 / X4**
+1. **Settings → Controls → Long-Press Menu → Dog-ear** (Confirm long press: set and remove)
+2. **Settings → Controls → Short Power Button Click → Go to Dog-ear** (Power short press: jump)
 
 **All devices, optional:** **Settings → Reader → Text Anti-Aliasing**: off gives the fastest page
 turns. The dog-ear looks the same either way.
