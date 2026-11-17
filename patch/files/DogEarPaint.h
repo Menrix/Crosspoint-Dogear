@@ -8,6 +8,7 @@
 //   (this wipes the text under it). Shadow pixels only add ink (force = false).
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 namespace DogEar {
@@ -18,7 +19,7 @@ struct Look {
   int crease = 145;         // how far down the right edge the crease ends, % of the fold width (100 = 45 degrees)
   int tipX = 120;           // folded tip position, % of the fold width (from the right edge)
   int tipY = 93;            // folded tip position, % of the fold width (from the top edge)
-  int background = 1;       // uncovered corner: 1 = dark gray, 2 = light gray (one flat tone)
+  int background = 1;       // uncovered corner: 0 = black, 1 = dark gray, 2 = light gray (one flat tone)
   int flapShade = 25;       // gray on the flap towards the tip, 0 (none) .. 255
   int edge = 0;             // flap outline: 0 = black, 1 = dark gray, 2 = light gray, 3 = none
   int shadowWidth = 10;     // how far the tip's shadow falls downwards, % of the fold width (0 = none)
@@ -26,12 +27,19 @@ struct Look {
   int shadowSoft = 60;      // soft fade around the shadow, % of the shadow drop (0 = razor sharp)
   int shadowShift = 80;     // sideways offset of the tip's shadow, % of the drop (+ = right, towards the crease)
 
+  bool operator==(const Look& o) const {
+    return size == o.size && crease == o.crease && tipX == o.tipX && tipY == o.tipY && background == o.background &&
+           flapShade == o.flapShade && edge == o.edge && shadowWidth == o.shadowWidth &&
+           shadowStrength == o.shadowStrength && shadowSoft == o.shadowSoft && shadowShift == o.shadowShift;
+  }
+  bool operator!=(const Look& o) const { return !(*this == o); }
+
   void clampAll() {
     size = std::clamp(size, 5, 45);
     crease = std::clamp(crease, 50, 250);
     tipX = std::clamp(tipX, 40, 250);
     tipY = std::clamp(tipY, 20, 250);
-    background = std::clamp(background, 1, 2);
+    background = std::clamp(background, 0, 2);
     flapShade = std::clamp(flapShade, 0, 255);
     edge = std::clamp(edge, 0, 3);
     shadowWidth = std::clamp(shadowWidth, 0, 50);
@@ -77,9 +85,7 @@ inline void segDistance(const int ax, const int ay, const int bx, const int by, 
   const long ex = px * 1024L - (ax * 1024L + dx * t);
   const long ey = py * 1024L - (ay * 1024L + dy * t);
   const long d2 = (ex / 64) * (ex / 64) + (ey / 64) * (ey / 64);  // in (1/16 px)^2
-  long d = 0;
-  while ((d + 1) * (d + 1) <= d2) ++d;  // integer sqrt; values stay small (corner only)
-  dist = static_cast<int>(d / 16);
+  dist = static_cast<int>(std::sqrt(static_cast<float>(d2))) / 16;
   along1024 = static_cast<int>(t);
 }
 
@@ -102,6 +108,13 @@ inline Shape shape(const Look& look, const int screenWidth, const int screenHeig
           drop * look.shadowSoft / 100};
 }
 
+// Size of the area the dog-ear can touch, measured from the top-right corner.
+inline void extent(const Look& look, const int screenWidth, const int screenHeight, int& width, int& height) {
+  const Shape sh = shape(look, screenWidth, screenHeight);
+  width = std::max({sh.ax, sh.tx, sh.sx}) + sh.soft + 3;
+  height = std::max({sh.by, sh.ty, sh.sy}) + sh.soft + 3;
+}
+
 // grayTones: true when the page gets a grayscale pass (real gray tones available).
 template <typename Px>
 void paint(const Look& look, const int screenWidth, const int screenHeight, const bool grayTones, Px&& px) {
@@ -120,9 +133,11 @@ void paint(const Look& look, const int screenWidth, const int screenHeight, cons
       const int y = v;
       if (x < 0 || y >= screenHeight) continue;
 
-      // 1) Uncovered corner: one flat gray tone, no gradient (u/ax + v/by < 1).
+      // 1) Uncovered corner: one flat tone, no gradient (u/ax + v/by < 1). Always a fine pattern of
+      //    pure black and white pixels: a large area of real e-ink gray lets the old page show through.
       if (static_cast<long>(u) * sh.by + static_cast<long>(v) * sh.ax < static_cast<long>(sh.ax) * sh.by) {
-        px(x, y, grayTones ? look.background : detail::toLevel(x, y, 255 - 85 * look.background, false), true);
+        static constexpr int kBackgroundDarkness[3] = {256, 200, 110};
+        px(x, y, detail::toLevel(x, y, kBackgroundDarkness[look.background], false), true);
         continue;
       }
 

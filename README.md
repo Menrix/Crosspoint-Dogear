@@ -1,5 +1,7 @@
 # CrossPoint Dog-ear
 
+![Dog-ear on the Xteink X4 Pro](images/dog-ear.jpg)
+
 A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader)
 on the **Xteink X4 Pro**: mark where you stopped reading with a realistic folded page corner
 ("dog-ear") instead of the tiny bookmark icon.
@@ -40,7 +42,7 @@ File Transfer), change values, then reopen the book. No new firmware is needed.
 | `crease` | 145 | How far down the right edge the crease ends, % of the fold width (100 = 45°) |
 | `tipX` | 120 | Folded tip, distance from the right edge, % of the fold width |
 | `tipY` | 93 | Folded tip, distance from the top edge, % of the fold width |
-| `background` | 1 | Uncovered corner: 1 = dark gray, 2 = light gray (one flat tone) |
+| `background` | 1 | Uncovered corner: 0 = black, 1 = dark gray, 2 = light gray (one flat tone, drawn as a fine pattern so nothing shows through) |
 | `flapShade` | 25 | Gray on the flap towards the tip, 0 (white) – 255 |
 | `edge` | 0 | Flap outline: 0 = black, 1 = dark gray, 2 = light gray, 3 = none |
 | `shadowWidth` | 10 | How far the tip's shadow falls downwards, % of the fold width (0 = no shadow) |

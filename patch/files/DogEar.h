@@ -7,6 +7,8 @@
 #include <Logging.h>
 #include <PersistableStore.h>
 
+#include <vector>
+
 #include "../ActivityResult.h"
 #include <BitmapHelpers.h>
 #include "../../BookmarkEntry.h"
@@ -59,32 +61,79 @@ struct GrayToneScope {
   GrayToneScope& operator=(const GrayToneScope&) = delete;
 };
 
+// The corner is computed once and kept as a small pixel map; every later page render only
+// copies it (the shape math is far too slow to repeat for each of the ~20 render passes).
+// Rebuilt when the screen size (orientation), the look or the gray mode changes.
+// Memory: one byte per pixel of the corner area, about 25 KB at the default size.
+struct Cache {
+  int screenW = 0, screenH = 0;
+  bool grayTones = false;
+  Look look;
+  int x0 = 0, w = 0, h = 0;
+  std::vector<uint8_t> pixels;  // 0 = untouched, else 0x80 | force << 2 | level
+};
+
+inline Cache& cache() {
+  static Cache c;
+  return c;
+}
+
+inline const Cache& prepared(const int screenW, const int screenH, const bool grayTones) {
+  Cache& c = cache();
+  if (!c.pixels.empty() && c.screenW == screenW && c.screenH == screenH && c.grayTones == grayTones &&
+      c.look == look()) {
+    return c;
+  }
+  c.screenW = screenW;
+  c.screenH = screenH;
+  c.grayTones = grayTones;
+  c.look = look();
+  extent(c.look, screenW, screenH, c.w, c.h);
+  c.w = std::min(c.w, screenW);
+  c.h = std::min(c.h, screenH);
+  c.x0 = screenW - c.w;
+  c.pixels.assign(static_cast<size_t>(c.w) * c.h, 0);
+  paint(c.look, screenW, screenH, grayTones, [&](int x, int y, int level, bool force) {
+    const int cx = x - c.x0;
+    if (cx < 0 || cx >= c.w || y < 0 || y >= c.h) return;
+    c.pixels[static_cast<size_t>(y) * c.w + cx] = static_cast<uint8_t>(0x80 | (force ? 4 : 0) | (level & 3));
+  });
+  return c;
+}
+
 // Draws the folded corner into the current render target: the B/W pass and both
 // grayscale plane passes, so anti-aliased text under the corner cannot shine through.
 inline void draw(const GfxRenderer& renderer) {
+  const Cache& c = prepared(renderer.getScreenWidth(), renderer.getScreenHeight(), grayPassActive());
   const auto mode = renderer.getRenderMode();
-  const bool grayTones = grayPassActive();
-  if (mode == GfxRenderer::BW) {
-    paint(look(), renderer.getScreenWidth(), renderer.getScreenHeight(), grayTones, [&](int x, int y, int level, bool force) {
-      if (level < 3) {
-        renderer.drawPixel(x, y, true);  // gray pixels start black; the gray pass lightens them
-      } else if (force) {
-        renderer.drawPixel(x, y, false);
-      }
-    });
-    return;
-  }
+  const bool bw = mode == GfxRenderer::BW;
   const bool msb = mode == GfxRenderer::GRAYSCALE_MSB;
-  const bool absolute = renderer.grayPlanesAreAbsolute();
-  paint(look(), renderer.getScreenWidth(), renderer.getScreenHeight(), grayTones, [&](int x, int y, int level, bool force) {
-    if (level == 3 && !force) return;
-    const auto p = grayPlanePixel(static_cast<uint8_t>(level), msb, absolute);
-    if (p.write) {
-      renderer.drawPixel(x, y, p.black);
-    } else if (!absolute) {
-      renderer.drawPixel(x, y, true);  // overlay plane: clear any gray left by text underneath
+  const bool absolute = !bw && renderer.grayPlanesAreAbsolute();
+  const uint8_t* p = c.pixels.data();
+  for (int y = 0; y < c.h; ++y) {
+    for (int cx = 0; cx < c.w; ++cx, ++p) {
+      const uint8_t v = *p;
+      if (!(v & 0x80)) continue;
+      const int x = c.x0 + cx;
+      const int level = v & 3;
+      const bool force = v & 4;
+      if (bw) {
+        if (level < 3) {
+          renderer.drawPixel(x, y, true);  // gray pixels start black; the gray pass lightens them
+        } else if (force) {
+          renderer.drawPixel(x, y, false);
+        }
+        continue;
+      }
+      if (level == 3 && !force) continue;
+      const auto gp = grayPlanePixel(static_cast<uint8_t>(level), msb, absolute);
+      if (gp.write) {
+        renderer.drawPixel(x, y, gp.black);
+      } else if (!absolute) {
+        renderer.drawPixel(x, y, true);  // overlay plane: clear any gray left by text underneath
+      }
     }
-  });
+  }
 }
 
 inline bool hitsCorner(const GfxRenderer& renderer, const int x, const int y) {
