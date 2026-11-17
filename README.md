@@ -6,6 +6,8 @@ A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/cros
 on the **Xteink X4 Pro**: mark where you stopped reading with a realistic folded page corner
 ("dog-ear") instead of the tiny bookmark icon.
 
+> **Tested on the Xteink X4 Pro with CrossPoint 2.0.0.** Other devices are not supported.
+
 This repository does not contain a copy of CrossPoint. A GitHub Action takes every new official
 CrossPoint release, adds the dog-ear and publishes the finished firmware under **Releases**.
 
@@ -18,18 +20,28 @@ CrossPoint release, adds the dog-ear and publishes the finished firmware under *
 | **Tap the dog-ear** | Removes it |
 
 - One dog-ear per book. It is stored like a CrossPoint bookmark, so it survives font, margin and orientation changes.
-- Set the Home key: **Settings → Controls → Home Button Gestures → Long Press → Bookmark**.
-- The corner long press and tap need **Touch Reader Controls** turned on.
-- Real gray tones need **Text Anti-Aliasing** on. Without it the gray is drawn as a fine dot pattern.
 - **Reader menu → Toggle Bookmark** still works too, for example without touch.
 
 ## Install
 
 1. Open the latest release and download `crosspoint-<version>-x4pro.bin`.
-2. Go to <https://crosspointreader.com/#flash-tools>, choose **X4 Pro**, then **Custom .bin**, and upload the file.
+2. Install it, either way works:
+   - **SD card:** copy the file to the root of the SD card, then on the reader go to
+     **Settings → SD Card Firmware Update** and pick the file.
+   - **USB:** go to <https://crosspointreader.com/#flash-tools> in Chrome or Edge, choose **X4 Pro**,
+     then **Custom .bin**, and upload the file.
 
 After that, **Settings → Check for Updates** on the reader installs new versions from this
 repository, so updates keep the dog-ear.
+
+## Set up once (required)
+
+The dog-ear is triggered by the **Bookmark** action, which is not on the Home key by default:
+
+1. **Settings → Controls → Home Button Gestures → Long Press → Bookmark**
+2. **Settings → Controls → Touch Reader Controls → On** (for long press and tap on the corner)
+3. Optional: **Settings → Reader → Text Anti-Aliasing**: on for a softer shadow edge in real gray,
+   off for the fastest page turns (the shadow edge is then a fine dot pattern)
 
 ## Tune the look on the device
 
