@@ -89,13 +89,17 @@ def main() -> None:
                        "    showBookmarkMessage = false;  // dog-ear: nothing to clear, no extra refresh\n",
                        "popup timeout")
 
-    # 7) Long press (Home key action 'Bookmark', long-press menu 'Bookmark', or touch on the corner):
-    #    no dog-ear yet -> set it here; a dog-ear on another page -> jump there.
+    # 7) The finger places, the Home key navigates.
+    #    Home key action 'Bookmark' / long-press menu 'Bookmark': no dog-ear yet -> set it here;
+    #    a dog-ear on another page -> jump there; on the dog-ear page -> nothing.
+    #    Long press on the corner (touch): fold the corner here; an older dog-ear moves here.
     def long_press(indent: str) -> str:
         return (f"{indent}if (cachedBookmarks.empty()) {{  // dog-ear: set, or jump to the existing one\n"
                 f"{indent}  addBookmark();\n"
                 f"{indent}}} else if (!currentPageBookmarked) {{\n"
                 f"{indent}  applyProgressChange(DogEar::jumpTarget(cachedBookmarks.front(), epub->getSpineItemsCount()));\n"
+                f"{indent}}} else {{\n"
+                f"{indent}  haptic_feedback::touchAction(true);  // already on the dog-ear page\n"
                 f"{indent}}}\n")
 
     src = replace_once(src, "      case CrossPointSettings::LP_MENU_BOOKMARK:\n        addBookmark();\n",
@@ -107,7 +111,7 @@ def main() -> None:
                        "home key action")
     src = replace_once(src, "    startClipSelection(selectionX, selectionY);\n",
                        "    if (DogEar::hitsCorner(renderer, selectionX, selectionY)) {\n"
-                       + long_press("      ") +
+                       "      if (!currentPageBookmarked) addBookmark();  // dog-ear: fold here (moves an older one)\n"
                        "      haptic_feedback::touchAction();\n"
                        "      return;\n"
                        "    }\n"

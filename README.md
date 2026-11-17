@@ -13,14 +13,19 @@ CrossPoint release, adds the dog-ear and publishes the finished firmware under *
 
 ## How it works on the reader
 
+The finger places the dog-ear, the Home key takes you back to it.
+
 | Action | Result |
 | --- | --- |
-| Long press (Home key or the top-right corner) with **no dog-ear yet** | Folds the corner on the current page |
-| Long press when a dog-ear **is set on another page** | Jumps to the dog-ear |
+| **Long press the top-right corner** | Folds the corner on this page. An older dog-ear moves here. |
 | **Tap the dog-ear** | Removes it |
+| **Long press Home**, no dog-ear yet | Folds the corner on this page |
+| **Long press Home**, dog-ear on another page | Jumps to the dog-ear |
+| **Long press Home** on the dog-ear page | Nothing changes (short vibration) |
 
 - One dog-ear per book. It is stored like a CrossPoint bookmark, so it survives font, margin and orientation changes.
-- **Reader menu → Toggle Bookmark** still works too, for example without touch.
+- A long press never removes a dog-ear by accident. Removing is always a deliberate tap.
+- Without touch (for example with a Bluetooth remote): **Reader menu → Toggle Bookmark** folds the corner on the current page (or removes it there).
 
 ## Install
 
