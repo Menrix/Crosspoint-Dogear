@@ -90,19 +90,19 @@ def main() -> None:
                        "    showBookmarkMessage = false;  // dog-ear: nothing to clear, no extra refresh\n",
                        "popup timeout")
 
-    # 7) "Place" and "go to", the same on every device:
-    #    Place  = X4 Pro: long press on the corner. X3/X4: Confirm long ('Dog-ear', stock toggle:
-    #             folds here, moves an older dog-ear here, removes it on its own page).
-    #    Go to  = X4 Pro: Home key action. X3/X4: Power short ('Go to Dog-ear').
-    #             On another page -> jump there; on its page -> nothing.
-    #             No dog-ear yet -> X4 Pro: set it here. X3/X4: nothing (no popup, no extra e-ink refresh).
-    #    Home key action 'Bookmark' / long-press menu 'Bookmark': no dog-ear yet -> set it here;
-    #    a dog-ear on another page -> jump there; on the dog-ear page -> nothing.
-    #    Long press on the corner (touch): fold the corner here; an older dog-ear moves here.
+    # 7) "Place" and "go to" on every device:
+    #    Place = X4 Pro: long press on the corner.
+    #            X3/X4: Power short ('Dog-ear'): folds here, moves an older dog-ear here,
+    #            removes it on its own page (the stock bookmark toggle).
+    #    Go to = X4 Pro: Home key action ('Dog-ear'): no dog-ear yet -> set it here.
+    #            X3/X4: Confirm long ('Go to Dog-ear'): no dog-ear yet -> nothing.
+    #            Both: on another page -> jump there; on its own page -> nothing, no redraw.
+    #    Setting often (end of every session) gets the quick key; going back is rarer.
     def long_press(indent: str) -> str:
-        return (f"{indent}if (cachedBookmarks.empty()) {{  // dog-ear: 'go to' with nothing to go to\n"
-                f"{indent}  if (!BoardConfig::hasTouch()) return;  // X3/X4: nothing happens, not even a redraw\n"
-                f"{indent}  addBookmark();  // X4 Pro: the Home key also sets the first dog-ear\n"
+        return (f"{indent}if (!BoardConfig::hasTouch()) {{  // dog-ear, X3/X4 Power short: fold here / move / remove\n"
+                f"{indent}  addBookmark();\n"
+                f"{indent}}} else if (cachedBookmarks.empty()) {{  // X4 Pro Home: go to; with none yet, set it here\n"
+                f"{indent}  addBookmark();\n"
                 f"{indent}}} else if (!currentPageBookmarked) {{\n"
                 f"{indent}  applyProgressChange(DogEar::jumpTarget(cachedBookmarks.front(), epub->getSpineItemsCount()));\n"
                 f"{indent}}} else {{\n"
@@ -110,6 +110,12 @@ def main() -> None:
                 f"{indent}  return;\n"
                 f"{indent}}}\n")
 
+    src = replace_once(src,
+                       "      case CrossPointSettings::LP_MENU_BOOKMARK:\n        addBookmark();\n",
+                       "      case CrossPointSettings::LP_MENU_BOOKMARK:  // X3/X4 Confirm long: go to the dog-ear\n"
+                       "        if (cachedBookmarks.empty() || currentPageBookmarked) return;  // nothing to do, no redraw\n"
+                       "        applyProgressChange(DogEar::jumpTarget(cachedBookmarks.front(), epub->getSpineItemsCount()));\n",
+                       "long-press menu")
     src = replace_once(src,
                        "      case HomeButtonAction::Bookmark:\n        if (!showBookmarkMessage) {\n          addBookmark();\n",
                        "      case HomeButtonAction::Bookmark:\n        if (!showBookmarkMessage) {\n" + long_press("          "),
@@ -155,17 +161,23 @@ def main() -> None:
 
     target.write_text(src, encoding="utf-8")
 
-    # 9) Button-only boards (X3/X4): offer 'Go to Dog-ear' for the short Power click
-    #    (the stock list has the bookmark shortcut only on touch boards without a home key).
+    # 9) Button-only boards (X3/X4): offer 'Dog-ear' for the short Power click (the stock list has
+    #    the bookmark shortcut only on touch boards without a home key) and call the long-press
+    #    menu entry 'Go to Dog-ear', matching what it does there.
     settings = root / "src" / "SettingsList.h"
     settings_src = replace_once(
         settings.read_text(encoding="utf-8"),
         "  // Touch boards without a home key have no button for these shortcuts.\n",
         "  if (!BoardConfig::hasTouch()) {  // dog-ear: button-only boards can put it on Power too\n"
-        "    options.push_back({StrId::STR_GO_TO_DOGEAR, CrossPointSettings::PWR_BOOKMARK});\n"
+        "    options.push_back({StrId::STR_BOOKMARK_OPTION, CrossPointSettings::PWR_BOOKMARK});\n"
         "  }\n"
         "  // Touch boards without a home key have no button for these shortcuts.\n",
         "power button option")
+    settings_src = replace_once(
+        settings_src,
+        "std::vector<StrId> values = {StrId::STR_KOSYNC, StrId::STR_DISABLED, StrId::STR_BOOKMARK_OPTION,",
+        "std::vector<StrId> values = {StrId::STR_KOSYNC, StrId::STR_DISABLED, StrId::STR_GO_TO_DOGEAR,",
+        "long-press menu label")
     settings.write_text(settings_src, encoding="utf-8")
 
     # 10) Call it what it is: 'Dog-ear' instead of 'Bookmark' in the settings and the reader menu.

@@ -42,9 +42,10 @@ Two keys, each with one job. Both react on the first press, without waiting.
 
 | Key (set in Settings → Controls) | Result |
 | --- | --- |
-| **Confirm long press → Dog-ear** | Folds the corner on this page. An older dog-ear moves here. On the dog-ear page: removes it. |
-| **Power short press → Go to Dog-ear** | Jumps to the dog-ear. On the dog-ear page, or with no dog-ear yet, nothing happens. |
+| **Power short press → Dog-ear** | Folds the corner on this page. An older dog-ear moves here. On the dog-ear page: removes it. |
+| **Confirm long press → Go to Dog-ear** | Jumps to the dog-ear. On the dog-ear page, or with no dog-ear yet, nothing happens. |
 
+You set a dog-ear often (every time you stop reading), so it gets the quick key; jumping back is rarer.
 No pop-up messages: on e-ink every message costs extra screen refreshes, and the folded corner speaks for itself.
 
 On all devices, **Reader menu → Toggle Dog-ear** works too.
@@ -70,8 +71,8 @@ The dog-ear needs a key. None is assigned by default.
 2. **Settings → Controls → Touch Reader Controls → On** (for long press and tap on the corner)
 
 **X3 / X4**
-1. **Settings → Controls → Long-Press Menu → Dog-ear** (Confirm long press: set and remove)
-2. **Settings → Controls → Short Power Button Click → Go to Dog-ear** (Power short press: jump)
+1. **Settings → Controls → Short Power Button Click → Dog-ear** (Power short press: set and remove)
+2. **Settings → Controls → Long-Press Menu → Go to Dog-ear** (Confirm long press: jump)
 
 **All devices, optional:** **Settings → Reader → Text Anti-Aliasing**: off gives the fastest page
 turns. The dog-ear looks the same either way.
