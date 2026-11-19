@@ -1,6 +1,6 @@
 # CrossPoint Dog-ear
 
-![Dog-ear on the Xteink X4 Pro](images/dog-ear.jpg)
+![Dog-ear on an e-reader](images/dog-ear-mockup.jpg)
 
 A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader):
 mark where you stopped reading with a realistic folded page corner ("dog-ear") instead of the
@@ -18,6 +18,8 @@ CrossPoint release, adds the dog-ear and publishes the finished firmware under *
 | Xteink X3 and X4 (one file for both) | `crosspoint-<version>-x3-x4.bin` |
 
 ## How it works
+
+![Real photo of the dog-ear on an Xteink X4 Pro](images/dog-ear.jpg)
 
 One dog-ear per book. It is stored like a CrossPoint bookmark, so it survives font, margin and
 orientation changes. In the settings the function is called **Dog-ear**.
