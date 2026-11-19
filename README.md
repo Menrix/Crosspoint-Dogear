@@ -49,25 +49,17 @@ Set the keys once in **Settings → Controls**:
 - *Optional:* **Settings → Reader → Text Anti-Aliasing** off gives the fastest page turns. The
   dog-ear looks the same either way.
 
-![Real photo of the dog-ear on an Xteink X4 Pro](images/dog-ear.jpg)
-
-<!-- Hidden until Crosspoint-ToDoList and Crosspoint-Addons are public:
 ## More add-ons
 
 - [Crosspoint-ToDoList](https://github.com/Menrix/Crosspoint-ToDoList): to-do and shopping lists
   you write and tick right on the reader.
 - [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all add-ons in one
   firmware**. A growing collection; install this one if you want more than one add-on.
--->
 
 ## How it is built
 
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
-the firmware under Releases. "Check for Updates" on the reader gets these builds, so you stay on
-the newest CrossPoint and keep the dog-ear.
-
-Self-built firmware does not include the official release key for CrossPoint's LCP service (only
-relevant for LCP-protected books from that service).
+the firmware under Releases.
 
 ## License
 
