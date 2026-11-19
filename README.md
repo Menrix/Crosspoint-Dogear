@@ -49,6 +49,13 @@ Set the keys once in **Settings → Controls**:
 - *Optional:* **Settings → Reader → Text Anti-Aliasing** off gives the fastest page turns. The
   dog-ear looks the same either way.
 
+## Why a firmware and not a plugin?
+
+The dog-ear can't be a CrossPoint plugin: it needs to hook into the reader itself (drawing on the
+page, the keys and the reader menu), and plugins can't reach those parts. So it is built into the
+latest **official** CrossPoint: as soon as a new CrossPoint version is out, a new build follows,
+usually within a day. You never fall behind official CrossPoint.
+
 ## More add-ons
 
 - [Crosspoint-ToDoList](https://github.com/Menrix/Crosspoint-ToDoList): to-do and shopping lists
