@@ -1,111 +1,76 @@
-# CrossPoint Dog-ear
+# Dog-ear for CrossPoint
 
-![Dog-ear on an e-reader](images/dog-ear-mockup.jpg)
+*Never fold a real book: fold the page corner on your e-reader instead.*
 
-A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader):
-mark where you stopped reading with a realistic folded page corner ("dog-ear") instead of the
-tiny bookmark icon.
+A realistic folded page corner that marks where you stopped reading, for the
+[CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) firmware.
 
-> **Tested on the Xteink X4 Pro with CrossPoint 2.0.0.**
-> The X3/X4 build is new and not tested on a device yet. Feedback welcome.
+![A dog-ear on an e-reader](images/dog-ear-mockup.jpg)
 
-This repository does not contain a copy of CrossPoint. A GitHub Action takes every new official
-CrossPoint release, adds the dog-ear and publishes the finished firmware under **Releases**.
+- **Fold the corner** – right where you stopped
+- **Jump back** – one press takes you to your dog-ear
+- **One per book** – a new one replaces the old one
+- **Survives font and layout changes**
+- **Big and clear** – instead of the tiny bookmark icon
+- **Pure black and white** – crisp on e-ink, nothing shows through
+- **No extra memory** – runs on the small X3/X4 chip too
+
+**Free & open source · Ready to flash · Updates built in**
+
+## Install
+
+Get the file for your device from **[Releases](../../releases)**:
 
 | Device | File |
 | --- | --- |
 | Xteink X4 Pro | `crosspoint-<version>-x4pro.bin` |
-| Xteink X3 and X4 (one file for both) | `crosspoint-<version>-x3-x4.bin` |
+| Xteink X3 and X4 | `crosspoint-<version>-x3-x4.bin` |
 
-## How it works
+> **Tested on the X4 Pro and on an X3 (by a user). X4 not tested yet.**
+
+Copy it to the SD card and use **Settings → SD Card Firmware Update**. Later updates:
+**Settings → Check for Updates**.
+
+## Use it
+
+Set the keys once in **Settings → Controls**:
+
+| | X4 Pro (touch) | X3 / X4 (buttons) |
+| --- | --- | --- |
+| Setup | **Home Button Gestures → Long Press → Dog-ear** and **Touch Reader Controls → On** | **Short Power Button Click → Dog-ear** and **Long-Press Menu → Go to Dog-ear** |
+| Fold the corner here | Hold the top-right corner | **Power** short press |
+| Remove the dog-ear | Tap it | **Power** short press on its page |
+| Jump to the dog-ear | Hold **Home** | Hold **Confirm** |
+
+- Folding a new corner moves the dog-ear: the old one disappears.
+- Nothing is removed by accident: removing always happens on the dog-ear's own page.
+- If there is nothing to jump to, nothing happens. No pop-ups, no extra screen refreshes.
+- **Reader menu → Toggle Dog-ear** works too, on every device.
+- *Optional:* **Settings → Reader → Text Anti-Aliasing** off gives the fastest page turns. The
+  dog-ear looks the same either way.
 
 ![Real photo of the dog-ear on an Xteink X4 Pro](images/dog-ear.jpg)
 
-One dog-ear per book. It is stored like a CrossPoint bookmark, so it survives font, margin and
-orientation changes. In the settings the function is called **Dog-ear**.
+<!-- Hidden until Crosspoint-ToDoList and Crosspoint-Addons are public:
+## More add-ons
 
-### X4 Pro (touch screen and Home key)
+- [Crosspoint-ToDoList](https://github.com/Menrix/Crosspoint-ToDoList): to-do and shopping lists
+  you write and tick right on the reader.
+- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all add-ons in one
+  firmware**. A growing collection; install this one if you want more than one add-on.
+-->
 
-The finger places the dog-ear, the Home key takes you back to it.
+## How it is built
 
-| Action | Result |
-| --- | --- |
-| **Long press the top-right corner** | Folds the corner on this page. An older dog-ear moves here. |
-| **Tap the dog-ear** | Removes it |
-| **Long press Home**, no dog-ear yet | Folds the corner on this page |
-| **Long press Home**, dog-ear on another page | Jumps to the dog-ear |
-| **Long press Home** on the dog-ear page | Nothing changes (short vibration) |
+Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
+the firmware under Releases. "Check for Updates" on the reader gets these builds, so you stay on
+the newest CrossPoint and keep the dog-ear.
 
-A long press never removes a dog-ear by accident. Removing is always a deliberate tap.
+Self-built firmware does not include the official release key for CrossPoint's LCP service (only
+relevant for LCP-protected books from that service).
 
-### X3 and X4 (buttons only)
+## License
 
-Two keys, each with one job. Both react on the first press, without waiting.
+MIT, like CrossPoint.
 
-| Key (set in Settings → Controls) | Result |
-| --- | --- |
-| **Power short press → Dog-ear** | Folds the corner on this page. An older dog-ear moves here. On the dog-ear page: removes it. |
-| **Confirm long press → Go to Dog-ear** | Jumps to the dog-ear. On the dog-ear page, or with no dog-ear yet, nothing happens. |
-
-You set a dog-ear often (every time you stop reading), so it gets the quick key; jumping back is rarer.
-No pop-up messages: on e-ink every message costs extra screen refreshes, and the folded corner speaks for itself.
-
-On all devices, **Reader menu → Toggle Dog-ear** works too.
-
-## Install
-
-1. Open the latest release and download the file for your device (see the table above).
-2. Install it, either way works:
-   - **SD card:** copy the file to the root of the SD card, then on the reader go to
-     **Settings → SD Card Firmware Update** and pick the file.
-   - **USB:** go to <https://crosspointreader.com/#flash-tools> in Chrome or Edge, choose your device,
-     then **Custom .bin**, and upload the file.
-
-After that, **Settings → Check for Updates** on the reader installs new versions from this
-repository, so updates keep the dog-ear.
-
-## Set up once (required)
-
-The dog-ear needs a key. None is assigned by default.
-
-**X4 Pro**
-1. **Settings → Controls → Home Button Gestures → Long Press → Dog-ear**
-2. **Settings → Controls → Touch Reader Controls → On** (for long press and tap on the corner)
-
-**X3 / X4**
-1. **Settings → Controls → Short Power Button Click → Dog-ear** (Power short press: set and remove)
-2. **Settings → Controls → Long-Press Menu → Go to Dog-ear** (Confirm long press: jump)
-
-**All devices, optional:** **Settings → Reader → Text Anti-Aliasing**: off gives the fastest page
-turns. The dog-ear looks the same either way.
-
-## Look
-
-The dog-ear has a fixed size and look on purpose: about a fifth of the screen width, a flat dark
-corner, a white flap with a fine outline and a solid black shadow. Everything is drawn in pure
-black and white dots, so nothing from the previous page shows through on e-ink.
-
-It uses no extra memory: the corner is recalculated with simple integer math on each page draw,
-which takes only a few milliseconds even on the X3/X4's small chip.
-
-## Updates and maintenance
-
-- The Action runs every night. When CrossPoint publishes a new release, a matching release appears here.
-- To build by hand: **Actions → Build CrossPoint with dog-ear → Run workflow**
-  (tick **force** to rebuild a version that already exists).
-- If CrossPoint changes the code the patch hooks into, the build stops with a message that
-  names the spot (`DOG-EAR PATCH FAILED: ...`). GitHub sends an email; then `patch/apply_dogear.py`
-  needs an update. If only one device fails, the other one is still published.
-
-## Files
-
-- `patch/files/DogEarPaint.h`: drawing of the folded corner (no hardware code, can be previewed on a PC)
-- `patch/files/DogEar.h`: connects the drawing to the CrossPoint renderer and the jump
-- `patch/apply_dogear.py`: adds the dog-ear to a CrossPoint source tree
-- `.github/workflows/build.yml`: nightly build and release for both devices
-
-Self-built firmware does not include the official release key for CrossPoint's LCP service
-(only relevant for LCP-protected books from that service). Everything else works as in the
-official release.
-
-MIT licensed, like CrossPoint.
+Made with the help of Claude.
