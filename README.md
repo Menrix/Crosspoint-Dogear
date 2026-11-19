@@ -2,12 +2,12 @@
 
 *Never fold a real book: fold the page corner on your e-reader instead.*
 
-A realistic folded page corner that marks where you stopped reading, for the
+A realistic folded page corner you put on any page you like, for the
 [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) firmware.
 
 ![A dog-ear on an e-reader](images/dog-ear-mockup.jpg)
 
-- **Fold the corner** – right where you stopped
+- **Fold a corner** – on any page you choose, with one press
 - **Jump back** – one press takes you to your dog-ear
 - **One per book** – a new one replaces the old one
 - **Survives font and layout changes**
