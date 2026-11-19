@@ -53,8 +53,8 @@ Set the keys once in **Settings → Controls**:
 
 - [Crosspoint-ToDoList](https://github.com/Menrix/Crosspoint-ToDoList): to-do and shopping lists
   you write and tick right on the reader.
-- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all add-ons in one
-  firmware**. A growing collection; install this one if you want more than one add-on.
+- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all my add-ons in one
+  firmware**. A growing collection; install this one if you want more than one of them.
 
 ## How it is built
 
