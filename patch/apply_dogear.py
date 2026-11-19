@@ -31,6 +31,38 @@ def replace_once(text: str, old: str, new: str, what: str) -> str:
     return text.replace(old, new, 1)
 
 
+OTA_MARKER = "// Crosspoint add-ons: same CrossPoint version, newer add-on build number."
+OTA_CODE = (
+    '  ' + OTA_MARKER + '\n'
+    '  // Add-on builds are named like "2.0.0-todo.12" or "2.0.0-dogear.3": a word after the dash,\n'
+    '  // then the build number. Each add-on patch adds this check; only the first one does it.\n'
+    '  {\n'
+    '    const auto buildOf = [](const char* v) -> long {\n'
+    '      const char* dash = strchr(v, \'-\');\n'
+    '      if (dash == nullptr) return 0;\n'
+    '      const char* dot = strrchr(dash, \'.\');\n'
+    '      if (dot == nullptr || dot[1] < \'0\' || dot[1] > \'9\') return -1;\n'
+    '      long n = 0;\n'
+    '      for (const char* c = dot + 1; *c >= \'0\' && *c <= \'9\'; c++) n = n * 10 + (*c - \'0\');\n'
+    '      return n;\n'
+    '    };\n'
+    '    const long latestBuild = buildOf(latestVersion.c_str());\n'
+    '    if (latestBuild > 0) return latestBuild > buildOf(currentVersion);\n'
+    '  }\n'
+)
+
+
+def patch_update_check(root):
+    """Check for Updates: a newer add-on build for the same CrossPoint version is an update too."""
+    ota = root / "src" / "network" / "OtaUpdater.cpp"
+    src = ota.read_text(encoding="utf-8")
+    if OTA_MARKER in src:
+        return  # another add-on did it already
+    src = replace_once(src, '  if (strstr(currentVersion, "-rc") != nullptr) {\n',
+                       OTA_CODE + '  if (strstr(currentVersion, "-rc") != nullptr) {\n', "update build number")
+    ota.write_text(src, encoding="utf-8")
+
+
 def main() -> None:
     if len(sys.argv) not in (2, 3):
         fail("usage: apply_dogear.py <crosspoint-reader folder> [owner/repo]")
@@ -204,6 +236,9 @@ def main() -> None:
                 new_text = new_text.rstrip("\n") + f'\n{key}: "{value}"\n'
 
         yaml_file.write_text(new_text, encoding="utf-8")
+
+    # 9b) "Check for Updates" also finds newer builds of the add-on.
+    patch_update_check(root)
 
     # 10) On-device updates come from this repository's releases (they include the dog-ear).
     if len(sys.argv) == 3:
